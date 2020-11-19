@@ -43,19 +43,31 @@ st_crs(cities_sf) <- st_crs(roads)
 #take out alaska and hawaii
 
 counties_exc <- counties %>% dplyr::filter(!STATE_NAME %in% c("Alaska", "Hawaii"))
-cities_exc <- cities_sf %>% dplyr::filter(!ST %in% c("AL", "HI"))
-
-st_bbox(cities_exc)
+cities_exc <- cities_sf %>% dplyr::filter(!ST %in% c("HI", "AK"))
 
 #group by state name
 
 counties_grp <- counties_exc %>% group_by(STATE_NAME) %>% tally()
 
-#create sgbp
+#buffer
 
-sel <- st_is_within_distance(cities_exc, counties_grp, dist = 20000) # can only return a sparse matrix
+roads_join <- roads %>% 
+  st_buffer(20000) %>% 
+  st_join(cities_exc)
 
-plot(st_geometry(cities_exc))
+
+ncities <- roads_join %>% select(CLASS) %>% group_by(CLASS) %>% 
+  summarise(NumberCities = n()) %>% arrange(desc(NumberCities))
+tot_cities <- as.data.frame(ncities[1,1:2])   
+tot_cities
+
+
+  
+#sel <- st_is_within_distance(cities_exc, roads, dist = 20000) # can only return a sparse matrix
+
+plot(st_geometry(counties_exc))
+plot(st_geometry(cities_sf))
+plot(st_geometry(counties_grp))
 
 #create logical vector
 
