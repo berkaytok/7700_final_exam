@@ -21,6 +21,8 @@ library(tidyverse)
 library(sf)
 library(tmap)
 library(rgdal)
+st_centroid(counties)
+tmap_mode("view")
 
 
 #imports
@@ -33,25 +35,34 @@ cities <- read_csv("data/cities1.csv")
 
 #convert csv to sf
 
-cities <- st_as_sf(cities, coords = c("lat","long"), crs=5070)
+cities <- st_as_sf(cities, coords = c("long","lat"), crs=5070) #had to switch lat/long columns to long/lat
+cit_vert <- st_as_sf(cities, coords = c("lat","long"), crs=5070) #this looks vertical
 
-st_bbox(counties)
-st_bbox(cities)
-st_bbox(elev)
-
-st_crs(cities) = st_crs(counties)
-st_crs(cities) == st_crs(counties)
-
-st_is_longlat(cities)
-st_set_crs(cities, st_crs(counties))
-st_crs(cities)
-
-sf_proj_info(counties)
-
-proj4string(counties)
-proj4string(cities) <- CRS("+proj=utm +zone=10 +datum=WGS84 +units=m +ellps=WGS84")
-
+st_crs(cities) ==  st_crs(counties) #looks correct
+st_crs(counties) == st_crs(roads)
+crs(elev)
 qtm(cities)
+qtm(cit_vert)
+plot(st_geometry(cities))
+plot(st_geometry(cit_vert)) #looks vertical
+#trying to figure things out, no changes done here
+
+st_bbox(counties) #      xmin       ymin       xmax       ymax 
+                  #-6293474.1   311822.4  2256319.2  6198810.9 
+
+st_bbox(cities)   #      xmin       ymin       xmax       ymax 
+                  #19.06873 -176.64275   71.26784  178.87460
+
+st_bbox(elev)     #    xmin     ymin     xmax     ymax 
+                  #-2453944  -252919  2315056  3723081
+
+st_is_longlat(counties) #I don't understand why these return FALSE
+st_is_longlat(cities) #I don't understand why these return FALSE
+st_is_longlat(roads) #I don't understand why these return FALSE
+
+qtm(counties) #looks correct on the basemap
+qtm(cities) #looks out of bounds on the basemap
+qtm(roads) #looks out of bounds on the basemap
 crs(elev)
 st_crs(cities)
 
@@ -124,7 +135,7 @@ plot(st_geometry(join_city))
 cities_nalhi$elevation <- raster::extract(elev, cities_nalhi)
 colnames(cities_nalhi)
 
-tmap_mode("view")
+
 
 qtm(counties_nalhi) + 
   tm_basemap(leaflet::providers$Stamen.toner)
