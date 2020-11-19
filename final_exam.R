@@ -47,11 +47,25 @@ cities_exc <- cities %>% dplyr::filter(!ST %in% c("AL", "HI"))
 
 #CAN'T GET THIS WORKING
 
-sel = st_is_within_distance(cities_sf, counties_exc, dist = 20000) # can only return a sparse matrix
+counties_grp <- counties_exc %>% group_by(STATE_NAME) %>% tally()
+
+sel <- st_is_within_distance(cities_sf, counties_grp, dist = 20000) # can only return a sparse matrix
 lengths(sel) > 0
 
 #intersect cities sf object to counties
 
 join_city <- st_intersection(cities_sf, counties_sf)
 plot(st_geometry(join_city))
+
+# QUESTION 2 --------------------------------------------------------------
+
+# 2.	Extract elevation (Terrain1.tif) for all cities location and report summary statistics for elevation (mean and sd) by states.
+
+
+
+# QUESTION 3 --------------------------------------------------------------
+
+# 3.	Create a choropleth map that best visualizing a state-level age group differences between AGE_5_17 and AGE_65_UP.    
+
+
 
