@@ -20,7 +20,6 @@ library(raster)
 library(tidyverse)
 library(sf)
 
-
 #imports
 
 gdb <- st_layers("data/SeminarR.gdb")
@@ -37,7 +36,6 @@ cities_sf <- st_as_sf(cities, coords = c("long","lat"),crs=4269)
 
 st_crs(cities_sf) <- st_crs(roads) 
 
-
 # QUESTION 1 --------------------------------------------------------------
 
 # 1.	How many cities located within 20 km buffer from the roads? 
@@ -46,6 +44,8 @@ st_crs(cities_sf) <- st_crs(roads)
 
 counties_exc <- counties %>% dplyr::filter(!STATE_NAME %in% c("Alaska", "Hawaii"))
 cities_exc <- cities %>% dplyr::filter(!ST %in% c("AL", "HI"))
+
+#CAN'T GET THIS WORKING
 
 sel = st_is_within_distance(cities_sf, counties_exc, dist = 20000) # can only return a sparse matrix
 lengths(sel) > 0
