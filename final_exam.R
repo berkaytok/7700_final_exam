@@ -19,6 +19,9 @@ cat('\f')
 library(raster)
 library(tidyverse)
 library(sf)
+library(tmap)
+library(rgdal)
+
 
 #imports
 
@@ -30,7 +33,29 @@ cities <- read_csv("data/cities1.csv")
 
 #convert csv to sf
 
-cities <- st_as_sf(cities, coords = c("long","lat"),crs=4269)
+cities <- st_as_sf(cities, coords = c("lat","long"), crs=5070)
+
+st_bbox(counties)
+st_bbox(cities)
+st_bbox(elev)
+
+st_crs(cities) = st_crs(counties)
+st_crs(cities) == st_crs(counties)
+
+st_is_longlat(cities)
+st_set_crs(cities, st_crs(counties))
+st_crs(cities)
+
+sf_proj_info(counties)
+
+proj4string(counties)
+proj4string(cities) <- CRS("+proj=utm +zone=10 +datum=WGS84 +units=m +ellps=WGS84")
+
+qtm(cities)
+crs(elev)
+st_crs(cities)
+
+#counties_join <- left_join(counties_nalhi, cities, by = c("STATE_NAME", "ST"))
 
 #match cities sf object crs to roads crs
 
@@ -45,25 +70,29 @@ st_crs(cities) <- st_crs(roads)
 counties_nalhi <- counties %>% dplyr::filter(!STATE_NAME %in% c("Alaska", "Hawaii"))
 cities_nalhi <- cities %>% dplyr::filter(!ST %in% c("HI", "AK"))
 
+
+plot(st_geometry(counties_nalhi))
+plot(st_geometry(cities_nalhi), add = T)
+plot(st_geometry(cities_nalhi))
+
 #buffer
 
 roads_join <- roads %>% 
-  st_buffer(20000) 
-#%>% st_join(cities_exc)
+  st_buffer(20000) %>% st_join(cities_nalhi)
 plot(st_geometry(roads_join))
 plot(st_geometry(cities_nalhi))
 st_crs(cities_nalhi)
 
+st_intersection(counties_nalhi, roads)
 
-
-
-
-#roads_join_merge <- left_join(roads_join, cities)
 
 numberofcities <- roads_join %>% select(CLASS) %>% group_by(CLASS) %>% 
-  summarise(NumberCities = n()) %>% arrange(desc(NumberCities)) %>% as.data.frame(ncities[1,1:2]) 
+  summarise(numbercities = n()) %>% arrange(desc(numbercities)) %>% as.data.frame(numberofcities[1,1:2]) 
 
 numberofcities
+
+st_bbox(cities_nalhi)
+st_bbox(counties_nalhi)
 
 # tot_cities <- as.data.frame(numberofcities[1,1:2])   
 # tot_cities
@@ -82,21 +111,30 @@ length(sel_logical[sel_logical == TRUE])
 #intersect cities sf object to counties
 
 #NO BOUNDING BOX?
+
 join_city <- st_intersection(counties_exc, cities_exc)
 plot(st_geometry(join_city))
+
+
 
 # QUESTION 2 --------------------------------------------------------------
 
 # 2.	Extract elevation (Terrain1.tif) for all cities location and report summary statistics for elevation (mean and sd) by states.
 
-ext_elev <- raster::extract(elev, cities_exc)
+cities_nalhi$elevation <- raster::extract(elev, cities_nalhi)
+colnames(cities_nalhi)
 
-plot(ext_elev)
-plot(st_geometry(cities_exc))
+tmap_mode("view")
+
+qtm(counties_nalhi) + 
+  tm_basemap(leaflet::providers$Stamen.toner)
+qtm(cities_nalhi) +
+  tm_basemap(leaflet::providers$Stamen.toner)
 
 # QUESTION 3 --------------------------------------------------------------
 
 # 3.	Create a choropleth map that best visualizing a state-level age group differences between AGE_5_17 and AGE_65_UP.    
 
-
-
+states <- counties %>%
+  group_by(STATE_NAME) %>% 
+  tally()
