@@ -43,25 +43,39 @@ st_crs(cities_sf) <- st_crs(roads)
 #take out alaska and hawaii
 
 counties_exc <- counties %>% dplyr::filter(!STATE_NAME %in% c("Alaska", "Hawaii"))
-cities_exc <- cities %>% dplyr::filter(!ST %in% c("AL", "HI"))
+cities_exc <- cities_sf %>% dplyr::filter(!ST %in% c("AL", "HI"))
 
-#CAN'T GET THIS WORKING
+st_bbox(cities_exc)
+
+#group by state name
 
 counties_grp <- counties_exc %>% group_by(STATE_NAME) %>% tally()
 
-sel <- st_is_within_distance(cities_sf, counties_grp, dist = 20000) # can only return a sparse matrix
-lengths(sel) > 0
+#create sgbp
+
+sel <- st_is_within_distance(cities_exc, counties_grp, dist = 20000) # can only return a sparse matrix
+
+plot(st_geometry(cities_exc))
+
+#create logical vector
+
+sel_logical <- lengths(sel) > 0
+length(sel_logical[sel_logical == TRUE])
 
 #intersect cities sf object to counties
 
-join_city <- st_intersection(cities_sf, counties_sf)
+#NO BOUNDING BOX?
+join_city <- st_intersection(counties_exc, cities_exc)
 plot(st_geometry(join_city))
 
 # QUESTION 2 --------------------------------------------------------------
 
 # 2.	Extract elevation (Terrain1.tif) for all cities location and report summary statistics for elevation (mean and sd) by states.
 
+ext_elev <- raster::extract(elev, cities_exc)
 
+plot(ext_elev)
+plot(st_geometry(cities_exc))
 
 # QUESTION 3 --------------------------------------------------------------
 
