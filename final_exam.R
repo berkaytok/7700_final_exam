@@ -16,15 +16,16 @@ cat('\f')
 
 #libraries
 
+library(raster)
 library(tidyverse)
 library(sf)
-library(raster)
+
 
 #imports
 
-gdb <- st_layers("data/SeminarR.gdb.zip")
-counties <- st_read("data/SeminarR.gdb.zip", "USA_counties")
-roads <- st_read("data/SeminarR.gdb.zip", "USA_roads")
+gdb <- st_layers("data/SeminarR.gdb")
+counties <- st_read("data/SeminarR.gdb", "USA_counties")
+roads <- st_read("data/SeminarR.gdb", "USA_roads")
 elev <- raster("data/Terrain1.tif")
 cities <- read_csv("data/cities1.csv")
 
