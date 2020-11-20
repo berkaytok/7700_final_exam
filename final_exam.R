@@ -20,9 +20,6 @@ library(raster)
 library(tidyverse)
 library(sf)
 library(tmap)
-library(rgdal)
-st_centroid(counties)
-tmap_mode("view")
 
 
 #imports
@@ -35,117 +32,67 @@ cities <- read_csv("data/cities1.csv")
 
 #convert csv to sf
 
-cities <- st_as_sf(cities, coords = c("long","lat"), crs=5070) #had to switch lat/long columns to long/lat
-cit_vert <- st_as_sf(cities, coords = c("lat","long"), crs=5070) #this looks vertical
-
-st_crs(cities) ==  st_crs(counties) #looks correct
-st_crs(counties) == st_crs(roads)
-crs(elev)
-qtm(cities)
-qtm(cit_vert)
-plot(st_geometry(cities))
-plot(st_geometry(cit_vert)) #looks vertical
-#trying to figure things out, no changes done here
-
-st_bbox(counties) #      xmin       ymin       xmax       ymax 
-                  #-6293474.1   311822.4  2256319.2  6198810.9 
-
-st_bbox(cities)   #      xmin       ymin       xmax       ymax 
-                  #19.06873 -176.64275   71.26784  178.87460
-
-st_bbox(elev)     #    xmin     ymin     xmax     ymax 
-                  #-2453944  -252919  2315056  3723081
-
-st_is_longlat(counties) #I don't understand why these return FALSE
-st_is_longlat(cities) #I don't understand why these return FALSE
-st_is_longlat(roads) #I don't understand why these return FALSE
-
-qtm(counties) #looks correct on the basemap
-qtm(cities) #looks out of bounds on the basemap
-qtm(roads) #looks out of bounds on the basemap
-crs(elev)
-st_crs(cities)
-
-#counties_join <- left_join(counties_nalhi, cities, by = c("STATE_NAME", "ST"))
-
-#match cities sf object crs to roads crs
-
-st_crs(cities) <- st_crs(roads) 
+cities_sf <- st_as_sf(cities, coords = c("long", "lat"), crs = 4269) 
+cities_transform <- st_transform(cities_sf, crs = 5070)
 
 # QUESTION 1 --------------------------------------------------------------
 
 # 1.	How many cities located within 20 km buffer from the roads? 
 
-#take out alaska and hawaii
+counties_nalhi <- counties %>% 
+  filter(!STATE_NAME %in% c("Alaska", "Hawaii"))
+cities_nalhi <- cities_transform %>% 
+  filter(!ST %in% c("HI", "AK"))
 
-counties_nalhi <- counties %>% dplyr::filter(!STATE_NAME %in% c("Alaska", "Hawaii"))
-cities_nalhi <- cities %>% dplyr::filter(!ST %in% c("HI", "AK"))
+cities_roads <- roads %>% 
+  select(ROUTE) %>%
+  st_buffer(20000) %>%
+  st_join(cities_nalhi) %>%
+  group_by(ST) %>%
+  summarise(num_of_cities = n(), 
+            pop_mean = mean(POPULATION)) %>%
+  arrange(desc(num_of_cities))
 
-
-plot(st_geometry(counties_nalhi))
-plot(st_geometry(cities_nalhi), add = T)
-plot(st_geometry(cities_nalhi))
-
-#buffer
-
-roads_join <- roads %>% 
-  st_buffer(20000) %>% st_join(cities_nalhi)
-plot(st_geometry(roads_join))
-plot(st_geometry(cities_nalhi))
-st_crs(cities_nalhi)
-
-st_intersection(counties_nalhi, roads)
-
-
-numberofcities <- roads_join %>% select(CLASS) %>% group_by(CLASS) %>% 
-  summarise(numbercities = n()) %>% arrange(desc(numbercities)) %>% as.data.frame(numberofcities[1,1:2]) 
-
-numberofcities
-
-st_bbox(cities_nalhi)
-st_bbox(counties_nalhi)
-
-# tot_cities <- as.data.frame(numberofcities[1,1:2])   
-# tot_cities
-
-#sel <- st_is_within_distance(cities_exc, roads, dist = 20000) # can only return a sparse matrix
-
-plot(st_geometry(counties_exc))
-plot(st_geometry(cities_sf))
-plot(st_geometry(counties_grp))
-
-#create logical vector
-
-sel_logical <- lengths(sel) > 0
-length(sel_logical[sel_logical == TRUE])
-
-#intersect cities sf object to counties
-
-#NO BOUNDING BOX?
-
-join_city <- st_intersection(counties_exc, cities_exc)
-plot(st_geometry(join_city))
-
-
+nrow(cities_roads)
+head(cities_roads)
 
 # QUESTION 2 --------------------------------------------------------------
 
 # 2.	Extract elevation (Terrain1.tif) for all cities location and report summary statistics for elevation (mean and sd) by states.
 
-cities_nalhi$elevation <- raster::extract(elev, cities_nalhi)
-colnames(cities_nalhi)
+cities_transform$elevation <- raster::extract(elev, cities_transform)
 
+cit_elev <- cities_transform %>%
+  group_by(ST) %>%
+  summarise(elev_mean = mean(elevation),
+            elev_sd = sd(elevation))
 
-
-qtm(counties_nalhi) + 
-  tm_basemap(leaflet::providers$Stamen.toner)
-qtm(cities_nalhi) +
-  tm_basemap(leaflet::providers$Stamen.toner)
+nrow(cit_elev)
+head(cit_elev)
 
 # QUESTION 3 --------------------------------------------------------------
 
 # 3.	Create a choropleth map that best visualizing a state-level age group differences between AGE_5_17 and AGE_65_UP.    
 
-states <- counties %>%
-  group_by(STATE_NAME) %>% 
-  tally()
+pop_difference <- counties_nalhi %>%
+  group_by(STATE_NAME) %>%
+  summarise(age517 = sum(AGE_5_17), 
+            age65 = sum(AGE_65_UP), 
+            difference = abs(age65 - age517))
+
+tm_shape(pop_difference) +
+  tm_polygons(col = "difference", 
+              title = "Age Difference", 
+              breaks = c(min(pop_difference$difference),
+                         (min(pop_difference$difference) + median(pop_difference$difference))/2,
+                         median(pop_difference$difference), 
+                         (max(pop_difference$difference) + median(pop_difference$difference))/2,
+                         max(pop_difference$difference))) +
+  tm_compass(position = c('right', 'bottom'), text.size = 0.7) +
+  tm_scale_bar(position = c('right', 'bottom'), text.size = 0.4) +
+  tm_layout(title = "Age Difference Map",
+            title.bg.color = "black",
+            title.bg.alpha = 0.5) +
+  tm_legend()
+
+
